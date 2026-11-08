@@ -1,0 +1,5 @@
+{
+    "game-area-size": 10,
+    "game-tic-interval": 1000,
+    "min-cell-size": 4
+}
