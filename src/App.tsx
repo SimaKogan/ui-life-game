@@ -1,4 +1,3 @@
-import './App.css';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/navigators/Layout';
 import { Home } from './pages/Home';
@@ -7,7 +6,6 @@ import { BackCompute } from './pages/BackCompute';
 import { ProjectDetails } from './pages/ProjectDetails';
 
 function App() {
-
   return (
     <BrowserRouter>
       <Routes>
@@ -20,7 +18,7 @@ function App() {
         </Route>
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
 export default App;

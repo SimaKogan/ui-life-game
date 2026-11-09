@@ -1,10 +1,12 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
-module.exports = function(app) {
+const target = process.env.API_TARGET || 'http://localhost:5001/api';
+
+module.exports = function (app) {
   app.use(
     '/proxy',
     createProxyMiddleware({
-      target: 'https://server-life-game.onrender.com/api',
+      target,
       changeOrigin: true,
     })
   );

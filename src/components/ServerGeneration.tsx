@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import { fetchServerNext } from "../utils/fetchServer";
+import { useEffect, useRef, useState } from "react";
+import { fetchServerDelete, fetchServerNext } from "../utils/fetchServer";
 import { DataType } from "../model/types";
-import { Button, Typography } from "@mui/material";
-import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
-import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined';
-import NotStartedOutlinedIcon from '@mui/icons-material/NotStartedOutlined';
-import PauseCircleOutlinedIcon from '@mui/icons-material/PauseCircleOutlined';
+import { Button } from "@mui/material";
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
+import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
+import StopRoundedIcon from '@mui/icons-material/StopRounded';
+import { StatsGrid } from "./StatsGrid";
 
 type ResponseNextProps = {
     generation: number,
@@ -20,100 +20,90 @@ type Props = {
     initialAlives: number
 }
 
+const nf = new Intl.NumberFormat('en-US');
+
 export const ServerGeneration: React.FC<Props> = ({ datas, setDatas, serverAreaSize, setServerAreaSize, initialAlives }) => {
     const matrixTotalSize = serverAreaSize ** 2;
     const [toggleCalculating, setToggleCalculating] = useState<boolean>(false);
     const [errorServerConnection, setErrorServerConnection] = useState<string>('');
-
     const [startCalculating, setStartCalculating] = useState<boolean>(false);
-    const [flPause, setFlPause] = useState<boolean>(false);
+    const stopped = useRef<boolean>(false);
+
+    const last = datas && datas.length > 0 ? datas[datas.length - 1] : undefined;
+    const alives = last ? last.alive : initialAlives;
+    const density = matrixTotalSize ? `${((alives / matrixTotalSize) * 100).toFixed(1)}%` : '—';
 
     async function handleServerComputing() {
-        if (toggleCalculating) {
+        if (!toggleCalculating) return;
 
-            const resp: ResponseNextProps = await fetchServerNext(setErrorServerConnection);
+        const resp: ResponseNextProps = await fetchServerNext(setErrorServerConnection);
+        if (stopped.current) return;
 
-            if (resp.generation === -1 || resp.alives === -1) {
-                console.error("Failed to fetch next generation");
-                return;
-            }
-
-            const data: DataType = {
-                dataKey: resp.generation.toString(),
-                alive: resp.alives,
-                dead: matrixTotalSize - resp.alives
-            };
-            setDatas([...datas!, (data)]);
+        if (resp.generation === -1 || resp.alives === -1) {
+            setToggleCalculating(false);
+            return;
         }
+
+        const data: DataType = {
+            dataKey: resp.generation.toString(),
+            alive: resp.alives,
+            dead: matrixTotalSize - resp.alives
+        };
+        setDatas([...(datas ?? []), data]);
     }
 
     useEffect(() => {
-        const pushData = async () => {
-            await handleServerComputing();
-        }
-
-        pushData();
+        handleServerComputing();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [datas, toggleCalculating]);
+
+    function handleStop() {
+        stopped.current = true;
+        setToggleCalculating(false);
+        setServerAreaSize(undefined);
+        setDatas(undefined);
+        fetchServerDelete();
+    }
 
     return (
         <>
-            <Typography>
-                Life matrix initialized on server: {serverAreaSize}&times;{serverAreaSize}, <br />
-                initial alives: {initialAlives} of {matrixTotalSize} cells
-            </Typography>
-            {errorServerConnection && <Typography style={{ color: 'red' }}>{errorServerConnection}</Typography>}
+            <div className="muted">
+                Matrix on server: {serverAreaSize}&times;{serverAreaSize} ({nf.format(matrixTotalSize)} cells)
+            </div>
 
+            <StatsGrid
+                items={[
+                    { label: 'Generation', value: last ? last.dataKey : '0' },
+                    { label: 'Alive cells', value: nf.format(alives) },
+                    { label: 'Density', value: density },
+                ]}
+            />
 
-            {!startCalculating && <Button onClick={() => {
-                setStartCalculating(true);
-                setToggleCalculating(true);
-                handleServerComputing();
+            {errorServerConnection && <div className="alert" role="alert">{errorServerConnection}</div>}
 
-            }}
-                variant="contained"
-                sx={{ fontSize: '16px', backgroundColor: 'lightgreen', margin: '10px' }}
-                endIcon={<PlayCircleOutlineIcon />}>
-                Start computing on server
-            </Button>
-            }
-
-            {startCalculating && !flPause && <Button variant="contained"
-                style={{ fontSize: '16px', backgroundColor: 'lightsalmon', margin: "10px" }}
-                onClick={() => {
-                    setFlPause(true);
-                    setToggleCalculating(false);
-
-                }}
-                endIcon={<PauseCircleOutlinedIcon />}>
-                Pause the computing
-            </Button>
-            }
-
-            {flPause && <Button variant="contained"
-                style={{ fontSize: '16px', backgroundColor: 'olivedrab', margin: "10px" }}
-                onClick={() => {
-                    setFlPause(false);
-                    setToggleCalculating(true);
-                }}
-                endIcon={<NotStartedOutlinedIcon />}>
-                Continue the computing
-            </Button>
-            }
-
-            {(toggleCalculating || flPause) &&
-                <Button onClick={() => {
-                    setToggleCalculating(false);
-                    setServerAreaSize(undefined);
-                    setTimeout(() => setDatas(undefined), 500);
-                    
+            <div className="btn-row">
+                {!startCalculating &&
+                    <Button variant="contained" startIcon={<PlayArrowRoundedIcon />}
+                        onClick={() => { setStartCalculating(true); setToggleCalculating(true); }}>
+                        Start computing
+                    </Button>
                 }
+                {startCalculating && toggleCalculating &&
+                    <Button variant="contained" startIcon={<PauseRoundedIcon />}
+                        onClick={() => setToggleCalculating(false)}>
+                        Pause
+                    </Button>
                 }
-                    variant="contained"
-                    sx={{ fontSize: '16px', backgroundColor: 'violet', margin: '10px' }}
-                    endIcon={<StopCircleOutlinedIcon />}>
-                    Stop server computing
-                </Button>}
+                {startCalculating && !toggleCalculating &&
+                    <Button variant="contained" startIcon={<PlayArrowRoundedIcon />}
+                        onClick={() => { setErrorServerConnection(''); setToggleCalculating(true); }}>
+                        Continue
+                    </Button>
+                }
+                <Button variant="outlined" color="inherit" startIcon={<StopRoundedIcon />} onClick={handleStop}>
+                    Stop and reset
+                </Button>
+            </div>
         </>
     )
-
 }

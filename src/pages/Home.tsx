@@ -1,37 +1,54 @@
-import { List, ListItem, Typography } from "@mui/material"
-import CircleIcon from '@mui/icons-material/Circle';
-import { Life } from "../components/Life";
-import default_config from '../config/default-config.json'
-import pattern_config from '../config/pattern-config.json'
+import { Link } from 'react-router-dom';
+import { Button } from '@mui/material';
+import { Life } from '../components/Life';
 
 export const Home: React.FC = () => {
-    const gameTicInterval: number = default_config["game-tic-interval"];
-    const defaultCellWith: number = pattern_config.octagon.defaultCellWith;
-
-    return (
-        <div className="flex justify-center items-center w-full h-full flex-col xl:flex-row">
-            <section className="flex flex-col sm:w-[600px] items-center">
-                <Life areaSize={"octagon"} gameTicInterval={gameTicInterval} defaultCellWith={defaultCellWith} />
-                <div className="m-4">
-                    <Typography className="bg-orange-100 shadow-md p-4">
-                        This website is dedicated to the study of certain aspects of the <span className="font-bold">Conway's Game of Life</span> cellular automaton.
-                        The website features two interactive sections:
-                        <List>
-                            <ListItem sx={{ display: 'inline-block' }}>
-                                <CircleIcon className="p-2" />
-                                <span className="font-bold">Front-end Calculation</span> - This section displays the game grid, which can vary in size from <span className="font-bold">10x10</span> to <span className="font-bold">100x100</span> cells.
-                                Users can observe the progression of the game on the grid, with initial conditions set by the user.
-                            </ListItem>
-                            <ListItem sx={{ display: 'inline-block' }}>
-                                <CircleIcon className="p-2" />
-                                <span className="font-bold">Back-end Calculation</span> - This section shows a graph plotting the number of living cells over the course of several generations.
-                                The initial grid can be set anywhere from <span className="font-bold">10x10</span> to <span className="font-bold">1'000x1'000</span> cells, corresponding to anywhere between 100 and 1'000'000 cells. The calculations for each generation are carried out on the server.
-                            </ListItem>
-                        </List>
-                        In both sections, the maximum number of cells is limited due to performance constraints (the site server is hosted on a free tariff plan).
-                    </Typography>
-                </div>
-            </section>
+  return (
+    <div className="page">
+      <section className="hero">
+        <div className="board-wrap">
+          <div className="board board-sm">
+            <Life areaSize="octagon" intervalMs={600} />
+          </div>
         </div>
-    )
-}
+        <div>
+          <h1>Conway's Game of Life</h1>
+          <p className="muted">
+            An interactive study of the cellular automaton devised by John Horton Conway.
+            Watch a grid evolve in your browser, or let the server compute thousands of
+            generations and plot how the population changes.
+          </p>
+          <div className="cta">
+            <Button component={Link} to="/front-compute" variant="contained" size="large">
+              Front-end calculation
+            </Button>
+            <Button component={Link} to="/back-compute" variant="outlined" size="large">
+              Back-end calculation
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="features">
+        <article className="card">
+          <h2>Front-end calculation</h2>
+          <p>
+            The game grid runs right in your browser. Choose a size from 10×10 to 100×100 cells,
+            set the speed, and observe the progression from a random initial state.
+          </p>
+        </article>
+        <article className="card">
+          <h2>Back-end calculation</h2>
+          <p>
+            The grid can be anywhere from 10×10 to 1'000×1'000 cells (up to 1'000'000 cells).
+            Each generation is computed on the server, and the chart shows alive versus dead cells over time.
+          </p>
+        </article>
+      </section>
+
+      <p className="note muted">
+        In both sections the number of cells is limited due to performance constraints.
+      </p>
+    </div>
+  );
+};

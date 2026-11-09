@@ -3,8 +3,6 @@ import { DataType } from "../model/types";
 import { ServerConnection } from "./ServerConnection";
 import { ServerGeneration } from "./ServerGeneration";
 import { fetchServerWakeUp } from "../utils/fetchServer";
-import { Typography } from "@mui/material";
-import LightbulbIcon from '@mui/icons-material/Lightbulb';
 
 type SetDatasType = {
     datas: DataType[] | undefined;
@@ -14,52 +12,47 @@ type SetDatasType = {
 export const ServerComputing: React.FC<SetDatasType> = ({ datas, setDatas }) => {
     const [serverAreaSize, setServerAreaSize] = useState<number>();
     const [initialAlives, setInitialAlives] = useState<number>();
-    const [serverResponse, setServerResponse] = useState<string>();
-    const [serverError, setServerError] = useState<string>();
+    const [serverResponse, setServerResponse] = useState<string>('');
+    const [serverError, setServerError] = useState<string>('');
     const [countdown, setCountdown] = useState<number>(60);
 
     useEffect(() => {
         const wakeUp = async () => {
-            setServerResponse('');
-            setServerError('');
             try {
-                const response = await fetchServerWakeUp();
-                setServerResponse(response);
-            } catch (e: any) {
-                setServerError(e.message);
+                setServerResponse(await fetchServerWakeUp());
+            } catch (e: unknown) {
+                setServerError(e instanceof Error ? e.message : 'Server is unavailable');
             }
         }
         wakeUp();
     }, [])
 
     useEffect(() => {
-        let timer: NodeJS.Timeout;
+        if (serverResponse || serverError || countdown <= 0) return;
+        const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [countdown, serverResponse, serverError])
 
-        if (countdown > 0 && !serverResponse && !serverError) {
-            timer = setInterval(() => setCountdown(countdown - 1), 1000);
-        }
-        return () => clearInterval(timer);
-    }, [countdown])
+    const statusClass = serverResponse ? 'ok' : serverError ? 'bad' : 'wait';
+    const statusText = serverResponse
+        ? serverResponse
+        : serverError
+            ? serverError
+            : `Waking up the server… ${countdown}s`;
 
     return (
-        <div className="flex flex-col justify-center items-center">
-            <Typography variant="button" gutterBottom sx={{ display: 'block', fontWeight: 'bold' }}>Back-end Calculation</Typography>
+        <>
+            <div className="panel-head">
+                <h2>Back-end calculation</h2>
+                <div className={`status ${statusClass}`} role="status">{statusText}</div>
+            </div>
 
+            <ServerConnection setDatas={setDatas} serverAreaSize={serverAreaSize}
+                setServerAreaSize={setServerAreaSize} setInitialAlives={setInitialAlives} />
 
-            {serverResponse && <div className="flex flex-row text-green-600"><LightbulbIcon />
-                <Typography>{serverResponse}</Typography></div>}
-            {serverError && <div className="flex flex-row text-red-600"><LightbulbIcon />
-                <Typography>{serverError}</Typography></div>}
-            {!serverResponse && !serverError && <div className="flex flex-row text-orange-500"><LightbulbIcon />
-                <Typography>Wait until the server is awake... {countdown}</Typography></div>}
-
-            <ServerConnection setDatas={setDatas} serverAreaSize={serverAreaSize} setServerAreaSize={setServerAreaSize}
-                setInitialAlives={setInitialAlives} />
-
-            {serverAreaSize &&
-                <ServerGeneration datas={datas} setDatas={setDatas} serverAreaSize={serverAreaSize} setServerAreaSize={setServerAreaSize}
-                    initialAlives={initialAlives!} />
+            {serverAreaSize !== undefined &&
+                <ServerGeneration datas={datas} setDatas={setDatas} serverAreaSize={serverAreaSize}
+                    setServerAreaSize={setServerAreaSize} initialAlives={initialAlives!} />
             }
-
-        </div>)
+        </>)
 }

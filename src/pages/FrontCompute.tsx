@@ -1,90 +1,100 @@
-import { InputParameters } from "../components/InputParameters";
-import { Life } from "../components/Life";
-import { useState } from "react";
-import config from '../config/default-config.json'
-import { Button, Typography } from "@mui/material";
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import NotStartedOutlinedIcon from '@mui/icons-material/NotStartedOutlined';
-import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined';
-import PauseCircleOutlinedIcon from '@mui/icons-material/PauseCircleOutlined';
+import { useCallback, useState } from 'react';
+import { Button, Slider } from '@mui/material';
+import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
+import CasinoOutlinedIcon from '@mui/icons-material/CasinoOutlined';
+import { Life, LifeStats } from '../components/Life';
+import { StatsGrid } from '../components/StatsGrid';
+
+const MIN_SIZE = 10;
+const MAX_SIZE = 100;
+const nf = new Intl.NumberFormat('en-US');
 
 export const FrontCompute: React.FC = () => {
-    const [areaSize, setAreaSize] = useState<number>(config["game-area-size"]);
-    const [gameTicInterval, setGameTicInterval] = useState<number>(config["game-tic-interval"]);
-    const [tpmTic, setTmpTic] = useState<number>();
-    const [startGame, setStartGame] = useState<boolean>(false);
-    const [flPause, setFlPause] = useState<boolean>(false);
+  const [areaSize, setAreaSize] = useState<number>(40);
+  const [speed, setSpeed] = useState<number>(5);
+  const [running, setRunning] = useState<boolean>(true);
+  const [resetKey, setResetKey] = useState<number>(0);
+  const [stats, setStats] = useState<LifeStats>({ generation: 0, alives: 0 });
 
-    function handleStartGame() {
-        setStartGame(false);
-        setTimeout(() => setStartGame(true), 0);
-    }
+  const onStats = useCallback((s: LifeStats) => setStats(s), []);
+  const total = areaSize * areaSize;
+  const density = total ? `${((stats.alives / total) * 100).toFixed(1)}%` : '—';
 
-    return (
-
-        <div className="flex flex-col sm:flex-row w-full justify-center">
-
-            {startGame && <Life areaSize={areaSize} gameTicInterval={gameTicInterval} />}
-
-            <div className="flex flex-col items-center justify-center">
-                <Typography variant="button" gutterBottom sx={{ display: 'block', fontWeight: 'bold' }}>Front-end Calculation</Typography>    
-                <Typography>Game parameters:</Typography>  
-
-
-                <InputParameters areaSize={areaSize} ticInterval={gameTicInterval}
-                    setAreaSize={setAreaSize} setTicInterval={setGameTicInterval} handleStartGame={handleStartGame}
-                    tmpTic={tpmTic} setTmpTic={setTmpTic} setFlPause={setFlPause} />
-
-                <Button variant="contained"
-                    style={{ fontSize: '20px', backgroundColor: 'lightgreen', margin: "10px" }}
-                    onClick={() => {
-                        if (tpmTic) {
-                            setGameTicInterval(tpmTic);
-                        }
-                        handleStartGame();
-                    }}
-                    endIcon={<RestartAltIcon />}>
-                    Start new Game
-                </Button>
-
-                {startGame && !flPause && <Button variant="contained"
-                    style={{ fontSize: '20px', backgroundColor: 'lightsalmon', margin: "10px" }}
-                    onClick={() => {
-                        setTmpTic(gameTicInterval);
-                        setGameTicInterval(1_000_000_000);
-                        setFlPause(true);
-                    }}
-                    endIcon={<PauseCircleOutlinedIcon />}>
-                    Pause the Game
-                </Button>
-                }
-
-                {flPause && <Button variant="contained"
-                    style={{ fontSize: '20px', backgroundColor: 'olivedrab', margin: "10px" }}
-                    onClick={() => {
-                        setGameTicInterval(tpmTic!);
-                        setFlPause(false);
-                    }}
-                    endIcon={<NotStartedOutlinedIcon />}>
-                    Continue the Game
-                </Button>
-                }
-
-                {startGame && <Button variant="contained"
-                    style={{ fontSize: '20px', backgroundColor: 'violet', margin: "10px" }}
-                    onClick={() => {
-                        if (tpmTic) {
-                            setGameTicInterval(tpmTic);
-                        }
-                        setFlPause(false);
-                        setStartGame(false);
-                    }
-                    }
-                    endIcon={<StopCircleOutlinedIcon />}>
-                    Stop the Game
-                </Button>
-                }
-            </div>
+  return (
+    <div className="page layout">
+      <section className="board-wrap">
+        <div className="board">
+          <Life
+            areaSize={areaSize}
+            intervalMs={Math.round(1000 / speed)}
+            running={running}
+            resetKey={resetKey}
+            onStats={onStats}
+          />
         </div>
-    )
-}
+      </section>
+
+      <aside className="panel">
+        <div className="panel-head">
+          <h2>Front-end calculation</h2>
+          <span className="muted">The game runs in your browser.</span>
+        </div>
+
+        <StatsGrid
+          items={[
+            { label: 'Generation', value: nf.format(stats.generation) },
+            { label: 'Alive cells', value: nf.format(stats.alives) },
+            { label: 'Density', value: density },
+          ]}
+        />
+
+        <div className="group">
+          <div className="field-label">
+            <span id="size-label">Field size</span>
+            <output>{areaSize} × {areaSize}</output>
+          </div>
+          <Slider
+            aria-labelledby="size-label"
+            min={MIN_SIZE}
+            max={MAX_SIZE}
+            value={areaSize}
+            onChange={(_, v) => setAreaSize(v as number)}
+          />
+        </div>
+
+        <div className="group">
+          <div className="field-label">
+            <span id="speed-label">Speed</span>
+            <output>{speed} gen/s</output>
+          </div>
+          <Slider
+            aria-labelledby="speed-label"
+            min={1}
+            max={30}
+            value={speed}
+            onChange={(_, v) => setSpeed(v as number)}
+          />
+        </div>
+
+        <div className="btn-row">
+          <Button
+            variant="contained"
+            onClick={() => setRunning(r => !r)}
+            startIcon={running ? <PauseRoundedIcon /> : <PlayArrowRoundedIcon />}
+          >
+            {running ? 'Pause' : 'Resume'}
+          </Button>
+          <Button
+            variant="outlined"
+            color="inherit"
+            onClick={() => setResetKey(k => k + 1)}
+            startIcon={<CasinoOutlinedIcon />}
+          >
+            New random field
+          </Button>
+        </div>
+      </aside>
+    </div>
+  );
+};

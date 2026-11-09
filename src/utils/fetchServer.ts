@@ -14,50 +14,39 @@ type ResponseNextProps = {
   alives: number;
 }
 
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = await response.json();
+    return body.message || fallback;
+  } catch {
+    return `${fallback} (HTTP ${response.status})`;
+  }
+}
+
 export const fetchServerInit = async ({ areaSize, setErrorServerConnection }: InitProps): Promise<ResponseInitProps | null> => {
-  let data: ResponseInitProps | null = null;
   try {
     const response = await fetch(`/proxy/init/${areaSize}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ key: 'value' })
+      body: JSON.stringify({ key: 'value' }),
     });
 
-    if (response.status == 400) {
-      const errorData = await response.json();
-      setErrorServerConnection(errorData.message);
-      return null;
-
-    }
-
     if (!response.ok) {
-      const errorData = await response.json();
-      setErrorServerConnection(errorData.message || 'Error initializing server');
+      setErrorServerConnection(await readErrorMessage(response, 'Error initializing server'));
       return null;
     }
 
-    data = await response.json();
-
-    console.log(data);
-
-  } catch (error: any) {
+    return await response.json();
+  } catch (error: unknown) {
     console.error('Error: ', error);
-    if (error instanceof Error) {
-      setErrorServerConnection(error.message);
-    } else {
-      setErrorServerConnection('Unknown error');
-    }
-
-  };
-
-  return data;
+    setErrorServerConnection(error instanceof Error ? error.message : 'Unknown error');
+    return null;
+  }
 }
 
 export const fetchServerNext = async (setErrorServerConnection: (e: string) => void): Promise<ResponseNextProps> => {
-  let data: ResponseNextProps = { generation: -1, alives: -1 };
+  const failed: ResponseNextProps = { generation: -1, alives: -1 };
   try {
     const response = await fetch('/proxy/next', {
       method: 'POST',
@@ -65,36 +54,36 @@ export const fetchServerNext = async (setErrorServerConnection: (e: string) => v
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Error response from /next:", errorData);
-      setErrorServerConnection(errorData.message || 'Error fetching next generation');
-      return data;  }
+      setErrorServerConnection(await readErrorMessage(response, 'Error fetching next generation'));
+      return failed;
+    }
 
+    return await response.json();
+  } catch (error: unknown) {
+    console.error('Error: ', error);
+    setErrorServerConnection(error instanceof Error ? error.message : 'Unknown error');
+    return failed;
+  }
+}
 
-    data = await response.json();
-    console.log("generation: ", data.generation, "lives: ", data.alives);
-
-  } catch (error: any) {
-    console.error('Error: ', error.message);
-    setErrorServerConnection(error.message);
-  };
-
-  return data;
+export const fetchServerDelete = async (): Promise<void> => {
+  try {
+    await fetch('/proxy/del', { method: 'DELETE', credentials: 'include' });
+  } catch (error: unknown) {
+    console.error('Error: ', error);
+  }
 }
 
 export const fetchServerWakeUp = async (): Promise<string> => {
   try {
-    const response = await fetch('/proxy/wakeup', {
-      method: 'GET'
-    });
+    const response = await fetch('/proxy/wakeup', { method: 'GET' });
     if (response.status === 200) {
-      return 'Server is awake!';
-    } else {
-      throw new Error(`Failed to wake up the server. Status: ${response.status}`);
+      return 'Server is awake';
     }
-
-  } catch (e: any) {
-    console.error('Error: ', e.message);
-    throw new Error(e.message || 'An unknown error occurred');
+    throw new Error(`Failed to wake up the server. Status: ${response.status}`);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'An unknown error occurred';
+    console.error('Error: ', message);
+    throw new Error(message);
   }
 }

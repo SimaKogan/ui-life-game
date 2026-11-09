@@ -7,8 +7,8 @@ export const ProjectDetails: React.FC = () => {
     return (
         <div className="flex justify-center items-center w-full flex-col xl:flex-row">
             <section className="flex flex-col sm:w-[600px] items-center">
-                <div className="bg-slate-100 shadow-md m-4">
-                    <Typography className="p-4 w-full bg-slate-200 flex justify-center">
+                <div className="bg-[color:var(--surface)] rounded-xl m-4">
+                    <Typography className="p-4 w-full bg-[color:var(--surface)] rounded-xl flex justify-center">
                         <span className="font-bold">Why am I working on this project?</span>
                     </Typography>
                     <Typography className="p-4">
@@ -35,7 +35,7 @@ export const ProjectDetails: React.FC = () => {
                     </Typography>
                 </div>
                 <div className="m-4">
-                    <Typography className="bg-slate-100 shadow-md p-4">
+                    <Typography className="bg-[color:var(--surface)] rounded-xl p-4">
                         If you're new to the Game or need a refresher on <span className="font-bold">the rules</span>, here's a quick overview.
                         Conway's Game of Life is a cellular automaton that is played on a 2D square grid.
                         Each square (or "cell") on the grid can be either alive or dead, and they evolve according to the following rules:
